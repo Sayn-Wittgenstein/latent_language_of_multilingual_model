@@ -1,5 +1,5 @@
 ## Usage
-
+You may need to add a Hugging Face token to Translation.ipynb and Cloze_multi.ipynb if you want to access certain models.
 ### Translation
 ```papermill Translation.ipynb out.ipynb -p input_lang en -p latent_lang_1 en -p latent_lang_2 ja -p target_lang zh -p model_selected 3 -p layer_num 40```
 ### Cloze
