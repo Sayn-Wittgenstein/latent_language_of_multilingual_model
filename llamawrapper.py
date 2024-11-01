@@ -6,61 +6,6 @@ import torch
 from safetensors.torch import load_file
 from collections import defaultdict
 
-def load_tokenizer_only(model_size, hf_token=None, model=2):
-    if model ==1:
-    #tokenizer = AutoTokenizer.from_pretrained(f'tokyotech-llm/Swallow-{model_size}-hf', use_auth_token=hf_token)
-        tokenizer = AutoTokenizer.from_pretrained(f'llm-jp/llm-jp-{model_size}-v2.0', use_auth_token=hf_token)
-    elif model ==2:
-        tokenizer = AutoTokenizer.from_pretrained(f'meta-llama/Llama-2-{model_size}-hf', use_auth_token=hf_token)
-    elif model ==3:
-        tokenizer = AutoTokenizer.from_pretrained(f'tokyotech-llm/Swallow-{model_size}-hf', use_auth_token=hf_token)
-    elif model ==4:
-        tokenizer = AutoTokenizer.from_pretrained(f'baichuan-inc/Baichuan2-13B-Base', use_auth_token=hf_token)
-    
-    return tokenizer
-
-def load_unemb_only(model_size, modeln):
-    if model_size == '70B' or model_size == '70b':
-        lm_head_state_dict = load_file("meta-llama2/Llama-2-70b-hf/model-00015-of-00015.safetensors")
-        norm_state_dict = load_file("meta-llama2/Llama-2-70b-hf/model-00014-of-00015.safetensors")
-    if model_size == '7B' or model_size == '7b':
-        #lm_head_state_dict = torch.load('swallow/swallow-7b-hf/pytorch_model-00002-of-00002.bin')
-        lm_head_state_dict = torch.load('swallow/swallow-7b-nve/pytorch_model-00002-of-00002.bin')
-        #lm_head_state_dict = load_file("meta-llama2/Llama-2-7b-hf/model-00002-of-00002.safetensors")
-        norm_state_dict = lm_head_state_dict 
-    if model_size == '13B' or model_size == '13b':
-        if modeln ==1:
-            lm_head_state_dict = torch.load("/home/zhong/llm_laten_language/llm-latent-language/llm-jp/pytorch_model-00003-of-00003.bin")
-        elif modeln ==2:
-            lm_head_state_dict = load_file("/home/zhong/llm_laten_language/llm-latent-language/meta-llama2/Llama-2-13b-hf/model-00003-of-00003.safetensors")
-        elif modeln ==3:
-        #lm_head_state_dict = torch.load("llm-jp/pytorch_model-00003-of-00003.bin")
-            lm_head_state_dict = torch.load('/home/zhong/llm_laten_language/llm-latent-language/swallow/swallow-13b/pytorch_model-00003-of-00003.bin')
-        elif modeln ==4:
-            lm_head_state_dict = torch.load("/home/zhong/llm_laten_language/llm-latent-language/baichuan/pytorch_model-00003-of-00003.bin", map_location="cuda:1")
-        
-        norm_state_dict = lm_head_state_dict
-        
-    norm_params = norm_state_dict['model.norm.weight'].detach().clone()
-    lm_head_params = lm_head_state_dict['lm_head.weight'].detach().clone()
-    
-    
-    lm_head = nn.Linear(*lm_head_params.shape[::-1], bias=False)
-    lm_head.weight.requires_grad_(False)
-    lm_head.weight.copy_(lm_head_params)
-    norm = transformers.models.llama.modeling_llama.LlamaRMSNorm(len(norm_params))
-    norm.weight.requires_grad_(False)
-    norm.weight.copy_(norm_params)
-    unemb = nn.Sequential(norm, lm_head)
-    if torch.cuda.device_count() >= 2:
-        print(f"Using {torch.cuda.device_count()} GPUs!")
-        # Wrap your model with DataParallel
-        unemb = nn.DataParallel(unemb, device_ids=[0, 1])
-        # Move your model to the first device
-        unemb = unemb.cuda(1)
-    else:
-        unemb.cuda()
-    return unemb
 
 class AttnWrapper(torch.nn.Module):
     def __init__(self, attn):
